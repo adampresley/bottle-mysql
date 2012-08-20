@@ -52,14 +52,17 @@ class MySQLPlugin(object):
 
     name = 'mysql'
 
-    def __init__(self, dbuser=None, dbpass=None, dbname=None, dbhost='localhost', autocommit=True, dictrows=True, keyword='db'):
-         self.dbhost = dbhost
-         self.dbuser = dbuser
-         self.dbpass = dbpass
-         self.dbname = dbname
-         self.autocommit = autocommit
-         self.dictrows = dictrows
-         self.keyword = keyword
+    def __init__(self, dbuser=None, dbpass=None, dbname=None, dbhost='localhost', dbport=3306, autocommit=True, dictrows=True, keyword='db', charset='utf8', timezone=None):
+        self.dbhost = dbhost
+        self.dbport = dbport
+        self.dbuser = dbuser
+        self.dbpass = dbpass
+        self.dbname = dbname
+        self.autocommit = autocommit
+        self.dictrows = dictrows
+        self.keyword = keyword
+        self.charset = charset
+        self.timezone = timezone
 
     def setup(self, app):
         '''
@@ -75,12 +78,15 @@ class MySQLPlugin(object):
         # Override global configuration with route-specific values.
         conf = context['config'].get('mysql') or {}
         dbhost = conf.get('dbhost', self.dbhost)
+        dbport = conf.get('dbport', self.dbport)
         dbuser = conf.get('dbuser', self.dbuser)
         dbpass = conf.get('dbpass', self.dbpass)
         dbname = conf.get('dbname', self.dbname)
         autocommit = conf.get('autocommit', self.autocommit)
         dictrows = conf.get('dictrows', self.dictrows)
         keyword = conf.get('keyword', self.keyword)
+        charset = conf.get('charset', self.charset)
+        timezone = conf.get('timezone', self.timezone)
 
         # Test if the original callback accepts a 'db' keyword.
         # Ignore it if it does not need a database handle.
@@ -94,10 +100,12 @@ class MySQLPlugin(object):
             try:
                 # Using DictCursor lets us return result as a dictionary instead of the default list
                 if dictrows:
-                    con = MySQLdb.connect(dbhost, dbuser, dbpass, dbname, cursorclass=cursors.DictCursor);
+                    con = MySQLdb.connect(dbhost, dbuser, dbpass, dbname, cursorclass=cursors.DictCursor, charset=charset, port=dbport);
                 else:
-                    con = MySQLdb.connect(dbhost, dbuser, dbpass, dbname);
+                    con = MySQLdb.connect(dbhost, dbuser, dbpass, dbname, charset=charset, port=dbport);
                 cur = con.cursor()
+                if timezone:
+                    cur.execute("set time_zone=%s", (timezone, ));
             except HTTPResponse, e:
                 raise HTTPError(500, "Database Error", e)
 
